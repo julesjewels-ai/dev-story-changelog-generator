@@ -1,24 +1,37 @@
-.PHONY: install run test clean
+.PHONY: help install lint format test coverage build clean
 
-VENV_NAME := venv
-PYTHON := $(VENV_NAME)/bin/python
-PIP := $(VENV_NAME)/bin/pip
+help:
+	@echo "Available targets:"
+	@echo "  make install  - Install dependencies"
+	@echo "  make lint     - Run linting"
+	@echo "  make format   - Format code"
+	@echo "  make test     - Run tests"
+	@echo "  make coverage - Run tests with coverage"
+	@echo "  make build    - Build package"
 
 install:
-	python3 -m venv $(VENV_NAME)
-	$(PIP) install --upgrade pip
-	$(PIP) install -r requirements.txt
+	pip install -r requirements.txt
+	pip install ruff black isort pytest pytest-cov
 
-run:
-	@# Checks if venv exists, if not warns user
-	@[ -d $(VENV_NAME) ] || (echo "Virtualenv not found. Run 'make install' first." && exit 1)
-	$(PYTHON) main.py
+lint:
+	@echo "Running ruff..."
+	ruff check src/ tests/ --fix || ruff check src/ tests/
+
+format:
+	black src/ tests/
+	isort src/ tests/
 
 test:
-	@[ -d $(VENV_NAME) ] || (echo "Virtualenv not found. Run 'make install' first." && exit 1)
-	$(PYTHON) -m pytest tests/
+	pytest tests/ -v --tb=short
+
+coverage:
+	pytest tests/ -v --cov=src --cov-report=term-missing
+
+coverage-check:
+	pytest tests/ --cov=src --cov-fail-under=80
+
+build:
+	@if [ -f "pyproject.toml" ]; then python -m build; else python -c "import src"; fi
 
 clean:
-	rm -rf $(VENV_NAME)
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .coverage htmlcov/
